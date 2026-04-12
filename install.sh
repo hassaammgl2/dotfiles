@@ -128,7 +128,14 @@ sudo usermod -aG docker $USER
 # Setup Flatpak flathub repo
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-# 6. Stow Dotfiles
+# 6. Install Caelestia Core Dots
+echo "-> Installing Caelestia Dots from Git..."
+if [ ! -d "$HOME/.local/share/caelestia" ]; then
+    git clone https://github.com/caelestia-dots/caelestia.git "$HOME/.local/share/caelestia"
+fi
+fish "$HOME/.local/share/caelestia/install.fish" --noconfirm --aur-helper yay
+
+# 7. Stow Dotfiles
 echo "-> Creating symlinks with GNU Stow..."
 if [ -d "$HOME/dotfiles" ]; then
     cd "$HOME/dotfiles" || exit 1
