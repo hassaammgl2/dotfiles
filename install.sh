@@ -84,6 +84,8 @@ AUR_PACKAGES=(
     "brave-bin"
     "visual-studio-code-bin"
     "antigravity"
+    "caelestia-shell"
+    "caelestia-cli"
 )
 
 echo "-> Installing official packages..."
@@ -134,6 +136,18 @@ if [ -d "$HOME/dotfiles" ]; then
     stow tmux
     stow nvim
     stow hyprland
+    stow btop
+    stow fastfetch
+    stow fish
+    stow foot
+    stow starship.toml
+    stow cava
+    stow lazygit
+    stow lazydocker
+    stow mpv
+    stow imv
+    stow alacritty
+    stow vlc
 else
     echo "Warning: ~/dotfiles directory not found. Skipping Stow."
 fi
