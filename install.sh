@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Exit on error
-# set -e
-
 echo "=========================================="
 echo "🚀 Starting System Setup for Dotfiles..."
 echo "=========================================="
@@ -34,9 +31,7 @@ fi
 # 3. Define packages to install
 
 PACMAN_PACKAGES=(
-    # Core Terminal Tools
     "kitty"
-    "wezterm"
     "tmux"
     "neovim"
     "fish"
@@ -45,7 +40,13 @@ PACMAN_PACKAGES=(
     "btop"
     "wl-clipboard"
     "unzip"
-
+    "eza"
+    "fzf"
+    "zoxide"
+    "git"
+    "bat"
+    "ripgrep"
+    "fd"
     # Hyprland & Wayland Ecosystem
     "hyprland"
     "waybar"
@@ -119,6 +120,7 @@ fi
 if [ ! -d "$HOME/.bun" ]; then
     echo "Installing Bun..."
     curl -fsSL https://bun.sh/install | bash
+    source "$HOME/.bash_profile"
 fi
 
 # Install Rust & Cargo
@@ -128,10 +130,16 @@ if ! command -v rustc &> /dev/null; then
     source "$HOME/.cargo/env"
 fi
 
+# installing tree-sitter
+cargo install tree-sitter-cli
 # 5. Enable System Services
 echo "-> Enabling System Services..."
 sudo systemctl enable --now docker.service
 sudo usermod -aG docker $USER
+# installing important dbs for setup
+docker pull mysql:8
+docker pull redis:7
+docker pull postgres:16
 
 # Setup Flatpak flathub repo
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
@@ -162,6 +170,12 @@ if [ -d "$HOME/dotfiles" ]; then
 else
     echo "Warning: ~/dotfiles directory not found. Skipping Stow."
 fi
+
+cp ./aliasis.bash ~/.config/aliasis.bash
+
+echo 'eval "$(starship init bash)"' >> ~/.bashrc
+echo 'eval "$(zoxide init bash)"' >> ~/.bashrc
+echo 'source ~/.config/aliasis.bash' >> ~/.bashrc
 
 echo "=========================================="
 echo "✅ Setup completely finished!"
