@@ -31,11 +31,11 @@ vim.keymap.set("n", "<C-g>u", docs.radix, { desc = "Radix UI Docs" })
 -- State Management
 vim.keymap.set("n", "<C-g>d", docs.redux, { desc = "Redux Docs" })
 vim.keymap.set("n", "<C-g>z", docs.zustand, { desc = "Zustand Docs" })
-vim.keymap.set("n", "<C-g>j", docs.jotai, { desc = "Jotai Docs" })
+vim.keymap.set("n", "<C-g>jo", docs.jotai, { desc = "Jotai Docs" })
 vim.keymap.set("n", "<C-g>m", docs.mobx, { desc = "MobX Docs" })
 
 -- Build Tools / Bundlers
-vim.keymap.set("n", "<C-g>f", docs.vite, { desc = "Vite Docs" })
+vim.keymap.set("n", "<C-g>vi", docs.vite, { desc = "Vite Docs" })
 vim.keymap.set("n", "<C-g>w", docs.webpack, { desc = "Webpack Docs" })
 vim.keymap.set("n", "<C-g>rj", docs.rollup, { desc = "Rollup Docs" })
 

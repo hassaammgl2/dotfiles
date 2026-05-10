@@ -47,6 +47,7 @@ PACMAN_PACKAGES=(
     "bat"
     "ripgrep"
     "fd"
+    "ntfs-3g"
     # Hyprland & Wayland Ecosystem
     "hyprland"
     "waybar"
@@ -96,6 +97,8 @@ AUR_PACKAGES=(
     "caelestia-shell"
     "caelestia-cli"
 )
+
+sudo mkdir -p /mnt/codes
 
 echo "-> Installing official packages..."
 sudo pacman -S --needed --noconfirm "${PACMAN_PACKAGES[@]}"

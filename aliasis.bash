@@ -26,7 +26,7 @@ alias ff='fzf --preview "bat --color=always {}"'
 ###########
 
 alias cd='z'
-alias zi='z -i'
+alias cdi='z -i'
 
 ###########
 # FD + RIPGREP
