@@ -4,6 +4,8 @@ echo "=========================================="
 echo "🚀 Starting System Setup for Dotfiles..."
 echo "=========================================="
 
+set -e
+
 # 1. Ask for sudo password upfront
 sudo -v
 
@@ -48,12 +50,27 @@ PACMAN_PACKAGES=(
     "ripgrep"
     "fd"
     "ntfs-3g"
+
     # Hyprland & Wayland Ecosystem
     "hyprland"
     "waybar"
     "mako"
     "fuzzel"
     "uwsm"
+    "hyprpaper"
+    "xdg-desktop-portal"
+    "xdg-desktop-portal-hyprland"
+    "polkit-kde-agent"
+    "qt5-wayland"
+    "qt6-wayland"
+    "grim"
+    "slurp"
+
+    # Audio
+    "pipewire"
+    "pipewire-pulse"
+    "pipewire-alsa"
+    "wireplumber"
 
     # Browsers
     "firefox"
@@ -123,7 +140,6 @@ fi
 if [ ! -d "$HOME/.bun" ]; then
     echo "Installing Bun..."
     curl -fsSL https://bun.sh/install | bash
-    source "$HOME/.bash_profile"
 fi
 
 # Install Rust & Cargo
@@ -135,10 +151,13 @@ fi
 
 # installing tree-sitter
 cargo install tree-sitter-cli
+
 # 5. Enable System Services
 echo "-> Enabling System Services..."
 sudo systemctl enable --now docker.service
-sudo usermod -aG docker $USER
+sudo usermod -aG docker "$USER"
+systemctl --user enable --now pipewire pipewire-pulse wireplumber
+
 # installing important dbs for setup
 docker pull mysql:8
 docker pull redis:7
@@ -161,29 +180,50 @@ if [ -d "$HOME/dotfiles" ]; then
     packages=(kitty wezterm tmux nvim hyprland btop fastfetch fish foot starship.toml cava lazygit lazydocker mpv imv alacritty vlc)
     for pkg in "${packages[@]}"; do
         echo "   Stowing $pkg..."
-        conflicts=$(stow --no --verbose=1 "$pkg" 2>&1 | awk '/existing target is not owned by stow: /{print $NF}' | sort -u)
-        for conflict in $conflicts; do
-            if [ -e "$HOME/$conflict" ]; then
-                echo "   Backing up $HOME/$conflict to $HOME/${conflict}_bak"
-                mv "$HOME/$conflict" "$HOME/${conflict}_bak"
-            fi
-        done
-        stow "$pkg"
+        stow --restow "$pkg" 2>/dev/null || {
+            echo "   Conflict detected in $pkg — attempting backup and retry..."
+            stow --no --verbose=2 "$pkg" 2>&1 | grep 'existing target' | awk '{print $NF}' | while read -r conflict; do
+                [ -e "$HOME/$conflict" ] && mv "$HOME/$conflict" "$HOME/${conflict}.bak"
+            done
+            stow "$pkg"
+        }
     done
 else
     echo "Warning: ~/dotfiles directory not found. Skipping Stow."
 fi
 
+# Copy aliases and fix bad fzf paths inside it
+mkdir -p ~/.config
 cp ./aliasis.bash ~/.config/aliasis.bash
+sed -i 's|source /usr/share/fzf/key-bindings.bash||' ~/.config/aliasis.bash
+sed -i 's|source /usr/share/fzf/completion.bash||' ~/.config/aliasis.bash
 
-echo 'eval "$(starship init bash)"' >> ~/.bashrc
-echo 'eval "$(zoxide init bash)"' >> ~/.bashrc
-echo 'source ~/.config/aliasis.bash' >> ~/.bashrc
+# Fix fzf to use actual install location (git or pacman)
+cat > ~/.fzf.bash << 'EOF'
+if [ -d "$HOME/.fzf" ]; then
+    export PATH="$HOME/.fzf/bin:$PATH"
+    [[ -f "$HOME/.fzf/shell/key-bindings.bash" ]] && source "$HOME/.fzf/shell/key-bindings.bash"
+    [[ -f "$HOME/.fzf/shell/completion.bash" ]] && source "$HOME/.fzf/shell/completion.bash"
+elif [ -d "/usr/share/fzf" ]; then
+    [[ -f "/usr/share/fzf/key-bindings.bash" ]] && source "/usr/share/fzf/key-bindings.bash"
+    [[ -f "/usr/share/fzf/completion.bash" ]] && source "/usr/share/fzf/completion.bash"
+fi
+EOF
+
+# Append to .bashrc idempotently
+add_to_bashrc() {
+    grep -qxF "$1" ~/.bashrc || echo "$1" >> ~/.bashrc
+}
+add_to_bashrc 'eval "$(starship init bash)"'
+add_to_bashrc 'eval "$(zoxide init bash)"'
+add_to_bashrc 'source ~/.config/aliasis.bash'
+add_to_bashrc '[ -f ~/.fzf.bash ] && source ~/.fzf.bash'
 
 echo "=========================================="
 echo "✅ Setup completely finished!"
-echo "System services (Docker) have been enabled."
-echo "Please restart your computer or log out for group permissions (like docker) to apply."
-echo "You may also want to set your default shell:"
-echo "chsh -s $(which fish)"
+echo ""
+echo "Next steps:"
+echo "  1. Restart your system (required for docker group + pipewire)"
+echo "  2. Set default shell: chsh -s \$(which fish)"
+echo "  3. If Hyprland breaks: journalctl --user -b | grep -i hypr"
 echo "=========================================="
