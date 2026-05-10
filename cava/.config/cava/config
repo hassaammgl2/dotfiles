@@ -5,6 +5,15 @@
 # Framerate (1-144) - higher = smoother but more CPU intensive
 framerate = 60
 
+# Number of bars. 0 = auto
+bars = 0
+
+# Width of each bar
+bar_width = 1
+
+# Space between bars
+bar_spacing = 1
+
 [input]
 # Audio input method: pulse, alsa, fifo, or portaudio
 method = pulse
