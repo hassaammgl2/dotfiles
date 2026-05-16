@@ -4,8 +4,6 @@ echo "=========================================="
 echo "🚀 Starting System Setup for Dotfiles..."
 echo "=========================================="
 
-set -e
-
 # 1. Ask for sudo password upfront
 sudo -v
 
@@ -85,7 +83,6 @@ PACMAN_PACKAGES=(
     # Fonts
     "ttf-victor-mono-nerd"
     "ttf-jetbrains-mono-nerd"
-    "ttf-fira-code-nerd"
     "noto-fonts"
     "noto-fonts-emoji"
 
@@ -121,6 +118,13 @@ echo "-> Installing official packages..."
 sudo pacman -S --needed --noconfirm "${PACMAN_PACKAGES[@]}"
 
 echo "-> Installing AUR packages..."
+# Handle swayosd conflict if it exists
+if pacman -Qs swayosd-git > /dev/null; then
+    echo "   swayosd-git already installed."
+elif pacman -Qs swayosd > /dev/null; then
+    echo "   Removing conflicting swayosd package..."
+    sudo pacman -Rns --noconfirm swayosd
+fi
 yay -S --needed --noconfirm "${AUR_PACKAGES[@]}"
 
 # 4. Setup Development Environments (Node, Bun, Rust)
@@ -158,22 +162,49 @@ sudo systemctl enable --now docker.service
 sudo usermod -aG docker "$USER"
 systemctl --user enable --now pipewire pipewire-pulse wireplumber
 
-# installing important dbs for setup
+# pulling images (will not auto-start dbs)
+echo "-> Pulling Docker images..."
 docker pull mysql:8
 docker pull redis:7
 docker pull postgres:16
+docker pull searxng/searxng:latest
 
 # Setup Flatpak flathub repo
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-# 6. Install Caelestia Core Dots
+# 6. Initialize & Auto-start SearXNG
+echo "-> Setting up SearXNG..."
+mkdir -p "$HOME/searxng"
+if [ ! -f "$HOME/searxng/settings.yml" ]; then
+    echo "   Creating default SearXNG settings..."
+    cat > "$HOME/searxng/settings.yml" << EOF
+use_default_settings: true
+server:
+    port: 8080
+    bind_address: "0.0.0.0"
+    secret_key: "$(openssl rand -hex 32)"
+EOF
+fi
+
+# Start SearXNG with auto-restart on boot
+if ! docker ps -a --format '{{.Names}}' | grep -q '^searxng$'; then
+    echo "   Starting SearXNG container..."
+    docker run -d \
+        --name searxng \
+        --restart always \
+        -p 8080:8080 \
+        -v "$HOME/searxng:/etc/searxng" \
+        searxng/searxng:latest
+fi
+
+# 7. Install Caelestia Core Dots
 echo "-> Installing Caelestia Dots from Git..."
 if [ ! -d "$HOME/.local/share/caelestia" ]; then
     git clone https://github.com/caelestia-dots/caelestia.git "$HOME/.local/share/caelestia"
 fi
 fish "$HOME/.local/share/caelestia/install.fish" --noconfirm --aur-helper yay
 
-# 7. Stow Dotfiles
+# 8. Stow Dotfiles
 echo "-> Creating symlinks with GNU Stow..."
 if [ -d "$HOME/dotfiles" ]; then
     cd "$HOME/dotfiles" || exit 1
@@ -226,4 +257,5 @@ echo "Next steps:"
 echo "  1. Restart your system (required for docker group + pipewire)"
 echo "  2. Set default shell: chsh -s \$(which fish)"
 echo "  3. If Hyprland breaks: journalctl --user -b | grep -i hypr"
+echo "  4. SearXNG is now AUTO-STARTING at http://localhost:8080"
 echo "=========================================="
