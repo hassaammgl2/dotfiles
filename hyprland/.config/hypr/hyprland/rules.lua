@@ -6,7 +6,7 @@ hl.window_rule({
 
 hl.window_rule({
     name = "opaque-native",
-    match = { class = "equibop|org%.quickshell|imv|swappy" },
+    match = { class = "equibop|org\\.quickshell|imv|swappy" },
     opaque = true,
 })
 
@@ -18,9 +18,9 @@ hl.window_rule({
 
 local float_classes = {
     "guifetch", "yad", "zenity", "wev",
-    "org%.gnome%.FileRoller", "file%-roller",
-    "blueman%-manager", "com%.github%.GradienceTeam%.Gradience",
-    "feh", "imv", "system%-config%-printer", "org%.quickshell",
+    "org\\.gnome\\.FileRoller", "file-roller",
+    "blueman-manager", "com\\.github\\.GradienceTeam\\.Gradience",
+    "feh", "imv", "system-config-printer", "org\\.quickshell",
 }
 
 for _, cls in ipairs(float_classes) do
@@ -41,7 +41,7 @@ hl.window_rule({
 
 hl.window_rule({
     name = "gnome-settings",
-    match = { class = "org%.gnome%.Settings" },
+    match = { class = "org\\.gnome\\.Settings" },
     float = true,
     size = { "70%", "80%" },
     center = true,
@@ -49,7 +49,7 @@ hl.window_rule({
 
 hl.window_rule({
     name = "pavucontrol",
-    match = { class = "org%.pulseaudio%.pavucontrol|yad%-icon%-browser" },
+    match = { class = "org\\.pulseaudio\\.pavucontrol|yad-icon-browser" },
     float = true,
     size = { "60%", "70%" },
     center = true,
@@ -57,7 +57,7 @@ hl.window_rule({
 
 hl.window_rule({
     name = "nwg-look",
-    match = { class = "nwg%-look" },
+    match = { class = "nwg-look" },
     float = true,
     size = { "50%", "60%" },
     center = true,
@@ -71,7 +71,7 @@ hl.window_rule({
 
 hl.window_rule({
     name = "special-music",
-    match = { class = "feishin|Spotify|Supersonic|Cider|com%.github%.th_ch%.youtube_music|Plexamp" },
+    match = { class = "feishin|Spotify|Supersonic|Cider|com\\.github\\.th_ch\\.youtube_music|Plexamp" },
     workspace = "special:music",
 })
 
@@ -94,14 +94,21 @@ hl.window_rule({
 })
 
 hl.window_rule({
+    name = "modal-float",
+    match = { modal = true },
+    float = true,
+    center = true,
+})
+
+hl.window_rule({
     name = "dialog-float",
-    match = { title = "(Select|Open)( a)? (File|Folder)(s)?" },
+    match = { title = ".*(Select|Open)( a)? (File|Folder)(s)?.*" },
     float = true,
 })
 
 hl.window_rule({
     name = "dialog-float-fileops",
-    match = { title = "File (Operation|Upload)( Progress)?" },
+    match = { title = ".*File (Operation|Upload)( Progress)?.*" },
     float = true,
 })
 
@@ -113,19 +120,19 @@ hl.window_rule({
 
 hl.window_rule({
     name = "dialog-float-export",
-    match = { title = "Export Image as PNG" },
+    match = { title = ".*Export Image as PNG.*" },
     float = true,
 })
 
 hl.window_rule({
     name = "dialog-float-gimp",
-    match = { title = "GIMP Crash Debug" },
+    match = { title = ".*GIMP Crash Debug.*" },
     float = true,
 })
 
 hl.window_rule({
     name = "dialog-float-save",
-    match = { title = "Save As" },
+    match = { title = ".*Save As.*" },
     float = true,
 })
 
@@ -137,7 +144,7 @@ hl.window_rule({
 
 hl.window_rule({
     name = "pip-move",
-    match = { title = "Picture(%-| )in(%-| )[Pp]icture" },
+    match = { title = ".*Picture(-| )in(-| )[Pp]icture.*" },
     move = "100%-w-2%% 100%-w-3%%",
     keep_aspect_ratio = true,
     float = true,
@@ -179,7 +186,7 @@ hl.window_rule({
 
 hl.window_rule({
     name = "minecraft-launcher-float",
-    match = { class = "com%-atlauncher%-App", title = "ATLauncher Console" },
+    match = { class = "com-atlauncher-App", title = "ATLauncher Console" },
     float = true,
 })
 
@@ -191,7 +198,7 @@ hl.window_rule({
 
 hl.window_rule({
     name = "fusion360-noblur",
-    match = { class = "fusion360%.exe", title = "Fusion360|(Marking Menu)" },
+    match = { class = "fusion360\\.exe", title = "Fusion360|(Marking Menu)" },
     no_blur = true,
 })
 

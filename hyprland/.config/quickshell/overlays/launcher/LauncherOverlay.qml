@@ -43,7 +43,7 @@ Scope {
                         out.push(a);
                 }
                 out.sort((a, b) => a.name.localeCompare(b.name));
-                return out.slice(0, 36);
+                return out;
             }
             readonly property var currentApp: {
                 const i = grid.currentIndex;
@@ -51,6 +51,27 @@ Scope {
                     return win.apps[i];
                 return null;
             }
+            property var menuApp: null
+            property real menuX: 0
+            property real menuY: 0
+            readonly property bool menuPinned: menuApp ? DockState.contains(DockState.entryId(menuApp)) : false
+            readonly property var menuActions: [
+                {
+                    "label": "Open",
+                    "action": "open",
+                    "on": true
+                },
+                {
+                    "label": "Pin to dock",
+                    "action": "pin",
+                    "on": !menuPinned
+                },
+                {
+                    "label": "Unpin from dock",
+                    "action": "unpin",
+                    "on": menuPinned
+                }
+            ]
 
             anchors {
                 left: true
@@ -60,6 +81,7 @@ Scope {
             }
 
             onVisibleChanged: {
+                menuApp = null;
                 if (visible) {
                     search.text = "";
                     grid.currentIndex = 0;
@@ -72,6 +94,31 @@ Scope {
                     return;
                 entry.execute();
                 OverlayState.close();
+            }
+
+            function showMenu(entry: var, tileItem: Item): void {
+                if (!entry || !tileItem)
+                    return;
+                menuApp = entry;
+                const pos = tileItem.mapToItem(layer, tileItem.width / 2, tileItem.height + 6);
+                menuX = pos.x;
+                menuY = pos.y;
+            }
+
+            function pinMenu(): void {
+                if (!menuApp)
+                    return;
+                const id = DockState.entryId(menuApp);
+                if (id && !DockState.contains(id))
+                    DockState.toggle(id);
+            }
+
+            function unpinMenu(): void {
+                if (!menuApp)
+                    return;
+                const id = DockState.entryId(menuApp);
+                if (id && DockState.contains(id))
+                    DockState.toggle(id);
             }
 
             function launchCurrent(): void {
@@ -103,7 +150,12 @@ Scope {
             Shortcut {
                 sequence: "Escape"
                 enabled: win.visible
-                onActivated: OverlayState.close()
+                onActivated: {
+                    if (win.menuApp)
+                        win.menuApp = null;
+                    else
+                        OverlayState.close();
+                }
             }
 
             Rectangle {
@@ -118,9 +170,13 @@ Scope {
 
             Column {
                 id: stage
-                anchors.centerIn: parent
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.topMargin: 16
+                anchors.bottomMargin: 12
                 width: win.cell * win.colCount
-                spacing: 22
+                spacing: 14
                 opacity: win.visible ? 1 : 0
                 scale: win.visible ? 1 : 0.96
                 transformOrigin: Item.Center
@@ -140,6 +196,7 @@ Scope {
                 }
 
                 Column {
+                    id: clockBlock
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 4
 
@@ -162,6 +219,7 @@ Scope {
                 }
 
                 Rectangle {
+                    id: searchBox
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: Math.min(420, stage.width)
                     height: 48
@@ -193,8 +251,17 @@ Scope {
                             font.pixelSize: 15
                             background: Item {}
                             selectByMouse: true
-                            onTextChanged: grid.currentIndex = 0
-                            Keys.onEscapePressed: OverlayState.close()
+                            onTextChanged: {
+                                grid.currentIndex = 0;
+                                grid.positionViewAtBeginning();
+                                win.menuApp = null;
+                            }
+                            Keys.onEscapePressed: {
+                                if (win.menuApp)
+                                    win.menuApp = null;
+                                else
+                                    OverlayState.close();
+                            }
                             Keys.onReturnPressed: win.launchCurrent()
                             Keys.onEnterPressed: win.launchCurrent()
                             Keys.onLeftPressed: event => {
@@ -218,13 +285,14 @@ Scope {
                 }
 
                 Column {
+                    id: titleBlock
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 6
                     width: parent.width
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: win.currentApp ? win.currentApp.name : (search.text.length ? "nothing" : "apps")
+                        text: win.currentApp ? win.currentApp.name : (search.text.length ? "nothing" : `${win.apps.length} apps`)
                         color: Colors.foreground
                         font.family: Colors.fontFamily
                         font.pixelSize: 22
@@ -233,7 +301,7 @@ Scope {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: win.currentApp ? (win.currentApp.comment || win.currentApp.genericName || "enter to open") : "type to search"
+                        text: win.apps.length ? `${win.apps.length} apps  ·  scroll  ·  right-click to pin` : "nothing"
                         color: Colors.color8
                         font.family: Colors.fontFamily
                         font.pixelSize: 12
@@ -247,13 +315,15 @@ Scope {
                     id: grid
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: win.cell * win.colCount
-                    height: cellHeight * 3
+                    height: Math.max(cellHeight * 2, stage.height - clockBlock.height - searchBox.height - titleBlock.height - stage.spacing * 3)
                     cellWidth: win.cell
                     cellHeight: 112
                     clip: true
                     interactive: true
+                    flickableDirection: Flickable.VerticalFlick
                     boundsBehavior: Flickable.StopAtBounds
                     highlightFollowsCurrentItem: true
+                    cacheBuffer: cellHeight * 4
                     model: win.apps
 
                     delegate: Item {
@@ -278,6 +348,17 @@ Scope {
                                     duration: 90
                                     easing.type: Easing.OutCubic
                                 }
+                            }
+
+                            Rectangle {
+                                visible: DockState.contains(DockState.entryId(modelData))
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 8
+                                width: 7
+                                height: 7
+                                radius: 4
+                                color: Colors.accent
                             }
 
                             Column {
@@ -307,9 +388,93 @@ Scope {
                             id: hover
                             anchors.fill: parent
                             hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
                             onEntered: grid.currentIndex = index
-                            onClicked: win.launch(modelData)
+                            onClicked: mouse => {
+                                if (mouse.button === Qt.RightButton)
+                                    win.showMenu(modelData, tile);
+                                else
+                                    win.launch(modelData);
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item {
+                id: layer
+                anchors.fill: parent
+                z: 5
+                enabled: win.menuApp !== null
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: win.menuApp = null
+                }
+
+                Rectangle {
+                    id: appMenu
+                    z: 2
+                    visible: win.menuApp !== null
+                    width: 176
+                    height: menuCol.implicitHeight + 10
+                    radius: 14
+                    color: Qt.alpha(Colors.color0, 0.94)
+                    border.width: 1
+                    border.color: Qt.alpha(Colors.accent, 0.35)
+                    x: Math.max(8, Math.min(win.menuX - width / 2, parent.width - width - 8))
+                    y: Math.max(8, Math.min(win.menuY, parent.height - height - 8))
+
+                    MouseArea {
+                        anchors.fill: parent
+                    }
+
+                    Column {
+                        id: menuCol
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        anchors.topMargin: 5
+                        width: parent.width - 10
+                        spacing: 2
+
+                        Repeater {
+                            model: win.menuActions
+
+                            Rectangle {
+                                required property var modelData
+                                width: menuCol.width
+                                height: 32
+                                radius: 10
+                                color: rowMouse.containsMouse && modelData.on ? Qt.alpha(Colors.accent, 0.32) : "transparent"
+                                opacity: modelData.on ? 1 : 0.38
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 12
+                                    text: modelData.label
+                                    color: Colors.foreground
+                                    font.family: Colors.fontFamily
+                                    font.pixelSize: 13
+                                }
+
+                                MouseArea {
+                                    id: rowMouse
+                                    anchors.fill: parent
+                                    enabled: modelData.on
+                                    hoverEnabled: true
+                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: {
+                                        if (modelData.action === "open")
+                                            win.launch(win.menuApp);
+                                        else if (modelData.action === "pin")
+                                            win.pinMenu();
+                                        else
+                                            win.unpinMenu();
+                                    }
+                                }
+                            }
                         }
                     }
                 }

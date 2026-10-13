@@ -1,11 +1,15 @@
 {
-  "apps": [
-    "kitty",
-    "brave-browser",
-    "helium",
-    "org.gnome.Nautilus",
-    "cursor",
-    "obsidian",
-    "spotify"
-  ]
+    "apps": [
+        "kitty",
+        "brave-browser",
+        "helium",
+        "org.gnome.Nautilus",
+        "com.microsoft.VSCode",
+        "cursor",
+        "com.github.unrud.VideoDownloader",
+        "sonora",
+        "localsend",
+        "obsidian",
+        "org.gnome.Software"
+    ]
 }
