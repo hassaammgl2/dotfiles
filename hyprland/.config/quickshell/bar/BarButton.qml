@@ -82,6 +82,8 @@ Item {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         cursorShape: Qt.PointingHandCursor
+        onEntered: BarState.pointerEntered()
+        onExited: BarState.pointerLeft()
         onClicked: event => root.clicked(event)
         onWheel: event => {
             root.wheel(event.angleDelta.y);

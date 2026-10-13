@@ -42,6 +42,7 @@ Item {
         color: "transparent"
         implicitWidth: 280
         implicitHeight: 320
+        onVisibleChanged: visible ? BarState.popupOpened() : BarState.popupClosed()
         grabFocus: true
 
         anchor {

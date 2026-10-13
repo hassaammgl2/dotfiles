@@ -18,20 +18,11 @@ Singleton {
     }
 
     function barReserve(edge: string): int {
-        if (!BarState.visible)
-            return 0;
-        if (BarState.vertical && (edge === "left" || edge === "right") && BarState.edge === edge)
-            return bar.size;
-        if (!BarState.vertical && (edge === "top" || edge === "bottom") && BarState.edge === edge)
-            return bar.size;
         return 0;
     }
 
     function osdX(screenW: int): int {
-        const left = BarState.visible && BarState.vertical && BarState.edge === "left" ? bar.size : 0;
-        const right = BarState.visible && BarState.vertical && BarState.edge === "right" ? bar.size : 0;
-        const usable = Math.max(1, screenW - left - right);
-        return left + Math.round((usable - osd.width) / 2);
+        return Math.round((Math.max(0, screenW) - osd.width) / 2);
     }
 
     function launcherCols(screenW: int): int {

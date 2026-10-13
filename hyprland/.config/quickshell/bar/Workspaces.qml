@@ -84,6 +84,8 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onEntered: BarState.pointerEntered()
+                    onExited: BarState.pointerLeft()
                     onClicked: root.switchTo(btn.wsId)
                 }
             }

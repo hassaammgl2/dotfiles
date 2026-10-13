@@ -31,6 +31,8 @@ Capsule {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             cursorShape: Qt.PointingHandCursor
+            onEntered: BarState.pointerEntered()
+            onExited: BarState.pointerLeft()
             onClicked: event => {
                 if (event.button === Qt.LeftButton)
                     iconRoot.modelData.activate();
