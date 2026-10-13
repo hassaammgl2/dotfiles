@@ -204,21 +204,19 @@ Scope {
         target: "screenshot"
 
         function toggle(): void {
-            if (OverlayState.screenshot)
-                OverlayState.close();
-            else {
-                ScreenshotState.resetPick();
-                OverlayState.showScreenshot();
-            }
+            if (OverlayState.screenshot || ScreenshotState.busy)
+                ScreenshotState.cancel();
+            else
+                ScreenshotState.begin();
         }
 
         function show(): void {
-            ScreenshotState.resetPick();
-            OverlayState.showScreenshot();
+            if (!OverlayState.screenshot && !ScreenshotState.busy)
+                ScreenshotState.begin();
         }
 
         function hide(): void {
-            OverlayState.screenshot = false;
+            ScreenshotState.cancel();
         }
     }
 

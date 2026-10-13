@@ -1,5 +1,4 @@
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Wayland
 import QtQuick
 import qs.theme
@@ -14,61 +13,68 @@ Scope {
 
             required property var modelData
             screen: modelData
-            visible: OverlayState.screenshot
-            color: "transparent"
+            visible: OverlayState.screenshot && ScreenshotState.ready
+            color: Theme.colors.background
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             focusable: true
             aboveWindows: true
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            WlrLayershell.namespace: "quickshell-screenshot"
 
-            property int current: 0
-            property bool grab: false
-            readonly property int usableShift: Math.round(Theme.barReserve("left") / 2)
-            readonly property bool picking: ScreenshotState.phase === "pick"
-            readonly property var pickActions: [
-                {
-                    "id": "full",
-                    "name": "Full screen",
-                    "icon": "󰹑",
-                    "tint": Colors.accent
-                },
-                {
-                    "id": "region",
-                    "name": "Region",
-                    "icon": "󰆞",
-                    "tint": Colors.color6
-                },
-                {
-                    "id": "window",
-                    "name": "Window",
-                    "icon": "󰖲",
-                    "tint": Colors.color3
-                }
-            ]
-            readonly property var previewActions: [
+            readonly property var shot: ScreenshotState.shotFor(modelData)
+            readonly property color scrim: Qt.rgba(0, 0, 0, 0.48)
+            readonly property bool selectedHere: ScreenshotState.hasSelection && ScreenshotState.owner === modelData.name
+            readonly property var hole: {
+                if (win.selectedHere)
+                    return {
+                        "x": ScreenshotState.selX,
+                        "y": ScreenshotState.selY,
+                        "w": ScreenshotState.selW,
+                        "h": ScreenshotState.selH
+                    };
+                if (!ScreenshotState.hasSelection && ScreenshotState.hasHover && ScreenshotState.hoverScreen === modelData.name)
+                    return {
+                        "x": ScreenshotState.hoverX,
+                        "y": ScreenshotState.hoverY,
+                        "w": ScreenshotState.hoverW,
+                        "h": ScreenshotState.hoverH
+                    };
+                return null;
+            }
+            readonly property var actions: [
                 {
                     "id": "copy",
-                    "name": "Copy",
-                    "icon": "󰆏",
-                    "tint": Colors.accent
+                    "label": "Copy",
+                    "icon": Theme.icons.copy,
+                    "primary": false
                 },
                 {
                     "id": "save",
-                    "name": "Save",
-                    "icon": "󰆓",
-                    "tint": Colors.color6
+                    "label": "Save",
+                    "icon": Theme.icons.save,
+                    "primary": false
                 },
                 {
                     "id": "both",
-                    "name": "Copy + save",
-                    "icon": "󰠘",
-                    "tint": Colors.color3
+                    "label": "Copy + Save",
+                    "icon": Theme.icons.screenshot,
+                    "primary": true
                 }
             ]
-            readonly property var actions: picking ? pickActions : previewActions
-            readonly property var currentAction: win.actions[Math.min(current, win.actions.length - 1)]
+            readonly property string sizeText: {
+                if (!win.selectedHere || win.hole === null || img.status !== Image.Ready)
+                    return "";
+                const c = win.pixels(win.hole);
+                return `${c.w} × ${c.h}`;
+            }
+
+            property bool dragging: false
+            property bool dragMoved: false
+            property bool eatRelease: false
+            property real dragX: 0
+            property real dragY: 0
 
             anchors {
                 left: true
@@ -77,193 +83,413 @@ Scope {
                 bottom: true
             }
 
-            onVisibleChanged: {
-                if (visible) {
-                    current = 0;
-                    grab = false;
-                    grabDelay.restart();
-                } else {
-                    grab = false;
-                    grabDelay.stop();
+            function rectFrom(x1: real, y1: real, x2: real, y2: real): var {
+                const left = Math.max(0, Math.min(x1, x2));
+                const top = Math.max(0, Math.min(y1, y2));
+                const right = Math.min(win.width, Math.max(x1, x2));
+                const bottom = Math.min(win.height, Math.max(y1, y2));
+                return {
+                    "x": left,
+                    "y": top,
+                    "w": Math.max(0, right - left),
+                    "h": Math.max(0, bottom - top)
+                };
+            }
+
+            function windowAt(px: real, py: real): var {
+                const list = ScreenshotState.windows;
+                if (!list)
+                    return null;
+                const sx = win.modelData.x;
+                const sy = win.modelData.y;
+                const sw = win.width;
+                const sh = win.height;
+                let best = null;
+                let bestArea = 0;
+                for (let i = 0; i < list.length; i++) {
+                    const item = list[i];
+                    let x = item.x - sx;
+                    let y = item.y - sy;
+                    let right = x + item.w;
+                    let bottom = y + item.h;
+                    if (x < 0)
+                        x = 0;
+                    if (y < 0)
+                        y = 0;
+                    if (right > sw)
+                        right = sw;
+                    if (bottom > sh)
+                        bottom = sh;
+                    const ww = right - x;
+                    const hh = bottom - y;
+                    if (ww < 2 || hh < 2)
+                        continue;
+                    if (px < x || py < y || px >= right || py >= bottom)
+                        continue;
+                    const area = ww * hh;
+                    if (!best || area < bestArea) {
+                        best = {
+                            "x": x,
+                            "y": y,
+                            "w": ww,
+                            "h": hh
+                        };
+                        bestArea = area;
+                    }
                 }
+                return best;
             }
 
-            Timer {
-                id: grabDelay
-                interval: 80
-                repeat: false
-                onTriggered: win.grab = true
+            function pixels(rect: var): var {
+                const iw = Math.max(1, img.sourceSize.width);
+                const ih = Math.max(1, img.sourceSize.height);
+                const sx = iw / Math.max(1, win.width);
+                const sy = ih / Math.max(1, win.height);
+                let x = Math.round(rect.x * sx);
+                let y = Math.round(rect.y * sy);
+                let w = Math.round(rect.w * sx);
+                let h = Math.round(rect.h * sy);
+                if (x < 0)
+                    x = 0;
+                if (y < 0)
+                    y = 0;
+                if (x > iw - 1)
+                    x = iw - 1;
+                if (y > ih - 1)
+                    y = ih - 1;
+                if (w < 1)
+                    w = 1;
+                if (h < 1)
+                    h = 1;
+                if (x + w > iw)
+                    w = iw - x;
+                if (y + h > ih)
+                    h = ih - y;
+                return {
+                    "x": x,
+                    "y": y,
+                    "w": w,
+                    "h": h
+                };
             }
 
-            function run(id: string): void {
-                if (id === "full" || id === "region" || id === "window")
-                    ScreenshotState.start(id);
-                else if (id === "copy")
-                    ScreenshotState.copy();
-                else if (id === "save")
-                    ScreenshotState.save();
-                else if (id === "both")
-                    ScreenshotState.both();
-            }
-
-            HyprlandFocusGrab {
-                active: win.visible && win.grab
-                windows: [win]
-                onCleared: OverlayState.close()
+            function act(action: string): void {
+                if (win.dragging || !win.shot || win.hole === null || img.status !== Image.Ready || !win.selectedHere)
+                    return;
+                const c = win.pixels(win.hole);
+                ScreenshotState.finish(action, win.shot.path, c.x, c.y, c.w, c.h);
             }
 
             Shortcut {
                 sequence: "Escape"
                 enabled: win.visible
-                onActivated: OverlayState.close()
-            }
-
-            Shortcut {
-                sequence: "Left"
-                enabled: win.visible
-                onActivated: win.current = Math.max(0, win.current - 1)
-            }
-
-            Shortcut {
-                sequence: "Right"
-                enabled: win.visible
-                onActivated: win.current = Math.min(win.actions.length - 1, win.current + 1)
+                onActivated: ScreenshotState.cancel()
             }
 
             Shortcut {
                 sequence: "Return"
                 enabled: win.visible
-                onActivated: win.run(win.currentAction.id)
+                onActivated: win.act("both")
             }
 
             Shortcut {
                 sequence: "Enter"
                 enabled: win.visible
-                onActivated: win.run(win.currentAction.id)
+                onActivated: win.act("both")
+            }
+
+            Shortcut {
+                sequence: "Ctrl+C"
+                enabled: win.visible
+                onActivated: win.act("copy")
+            }
+
+            Shortcut {
+                sequence: "Ctrl+S"
+                enabled: win.visible
+                onActivated: win.act("save")
+            }
+
+            Image {
+                id: img
+                anchors.fill: parent
+                visible: win.shot !== null
+                source: win.shot ? `file://${win.shot.path}` : ""
+                fillMode: Image.Stretch
+                cache: false
+                asynchronous: false
+                smooth: true
+                mipmap: true
             }
 
             Rectangle {
+                z: 1
+                visible: win.hole === null
                 anchors.fill: parent
-                color: Qt.alpha(Colors.background, 0.55)
+                color: win.scrim
+            }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: OverlayState.close()
+            Rectangle {
+                z: 1
+                visible: win.hole !== null
+                x: 0
+                y: 0
+                width: parent.width
+                height: win.hole ? win.hole.y : 0
+                color: win.scrim
+            }
+
+            Rectangle {
+                z: 1
+                visible: win.hole !== null
+                x: 0
+                y: win.hole ? win.hole.y + win.hole.h : 0
+                width: parent.width
+                height: win.hole ? Math.max(0, parent.height - y) : 0
+                color: win.scrim
+            }
+
+            Rectangle {
+                z: 1
+                visible: win.hole !== null
+                x: 0
+                y: win.hole ? win.hole.y : 0
+                width: win.hole ? win.hole.x : 0
+                height: win.hole ? win.hole.h : 0
+                color: win.scrim
+            }
+
+            Rectangle {
+                z: 1
+                visible: win.hole !== null
+                x: win.hole ? win.hole.x + win.hole.w : 0
+                y: win.hole ? win.hole.y : 0
+                width: win.hole ? Math.max(0, parent.width - x) : 0
+                height: win.hole ? win.hole.h : 0
+                color: win.scrim
+            }
+
+            Rectangle {
+                z: 2
+                visible: win.hole !== null
+                x: win.hole ? win.hole.x : 0
+                y: win.hole ? win.hole.y : 0
+                width: win.hole ? win.hole.w : 0
+                height: win.hole ? win.hole.h : 0
+                color: "transparent"
+                border.width: 2
+                border.color: win.selectedHere ? Theme.colors.accent : Theme.withAlpha(Theme.colors.text, 0.9)
+            }
+
+            MouseArea {
+                id: pad
+                z: 3
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                cursorShape: Qt.CrossCursor
+                preventStealing: true
+
+                onPressed: mouse => {
+                    if (mouse.button !== Qt.LeftButton) {
+                        if (ScreenshotState.hasSelection)
+                            ScreenshotState.clearSelection();
+                        else
+                            ScreenshotState.cancel();
+                        return;
+                    }
+                    win.eatRelease = false;
+                    win.dragging = true;
+                    win.dragMoved = false;
+                    win.dragX = mouse.x;
+                    win.dragY = mouse.y;
+                    ScreenshotState.clearSelection();
+                }
+
+                onPositionChanged: mouse => {
+                    if (win.dragging) {
+                        if (Math.abs(mouse.x - win.dragX) > 6 || Math.abs(mouse.y - win.dragY) > 6)
+                            win.dragMoved = true;
+                        if (!win.dragMoved)
+                            return;
+                        const rect = win.rectFrom(win.dragX, win.dragY, mouse.x, mouse.y);
+                        ScreenshotState.select(win.modelData.name, rect.x, rect.y, rect.w, rect.h);
+                        return;
+                    }
+                    const hit = win.windowAt(mouse.x, mouse.y);
+                    if (hit)
+                        ScreenshotState.setHover(win.modelData.name, hit.x, hit.y, hit.w, hit.h);
+                    else if (ScreenshotState.hoverScreen === win.modelData.name)
+                        ScreenshotState.clearHover();
+                }
+
+                onReleased: mouse => {
+                    if (mouse.button !== Qt.LeftButton)
+                        return;
+                    if (win.eatRelease) {
+                        win.eatRelease = false;
+                        win.dragging = false;
+                        return;
+                    }
+                    const moved = win.dragMoved && ScreenshotState.selW >= 8 && ScreenshotState.selH >= 8;
+                    win.dragging = false;
+                    win.dragMoved = false;
+                    if (moved)
+                        return;
+                    const hit = win.windowAt(mouse.x, mouse.y);
+                    if (hit)
+                        ScreenshotState.select(win.modelData.name, hit.x, hit.y, hit.w, hit.h);
+                    else
+                        ScreenshotState.clearSelection();
+                }
+
+                onDoubleClicked: mouse => {
+                    if (mouse.button !== Qt.LeftButton)
+                        return;
+                    win.eatRelease = true;
+                    win.dragging = false;
+                    win.dragMoved = false;
+                    ScreenshotState.select(win.modelData.name, 0, 0, win.width, win.height);
+                }
+
+                onExited: {
+                    if (ScreenshotState.hoverScreen === win.modelData.name)
+                        ScreenshotState.clearHover();
                 }
             }
 
             Column {
-                anchors.centerIn: parent
-                anchors.horizontalCenterOffset: win.usableShift
-                spacing: modelData.height < 900 ? 18 : 28
-                opacity: win.visible ? 1 : 0
-                scale: win.visible ? 1 : 0.94
+                z: 5
+                visible: !ScreenshotState.hasSelection
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.topMargin: 28
+                spacing: 6
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: 160
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 180
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Rectangle {
-                    visible: !win.picking
+                Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.min(modelData.width < 1600 ? 420 : 640, Math.floor((win.width - Theme.barReserve("left") - 48) * 0.5))
-                    height: Math.min(modelData.height < 900 ? 200 : 360, Math.floor(win.height * 0.28))
-                    radius: 16
-                    color: Theme.colors.background
-                    border.width: 1
-                    border.color: Qt.alpha(Colors.foreground, 0.16)
-                    clip: true
-
-                    Image {
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        source: win.picking ? "" : `file://${ScreenshotState.lastPath}?${ScreenshotState.tick}`
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                        cache: false
-                    }
+                    text: "Drag a region    ·    Click a window    ·    Double-click this screen"
+                    color: Theme.colors.text
+                    font.family: Theme.font.ui
+                    font.pixelSize: Theme.type.body
                 }
 
-                Column {
+                Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 6
+                    text: "Enter copies and saves    ·    Esc cancels"
+                    color: Theme.colors.textMuted
+                    font.family: Theme.font.ui
+                    font.pixelSize: Theme.type.caption
+                }
+            }
 
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: win.picking ? "screenshot" : "preview"
-                        color: Colors.color8
-                        font.family: Colors.fontFamily
-                        font.pixelSize: 13
-                    }
+            Rectangle {
+                z: 5
+                visible: win.sizeText.length > 0 && win.hole !== null
+                x: win.hole ? Math.max(8, win.hole.x) : 0
+                y: {
+                    if (!win.hole)
+                        return 0;
+                    const above = win.hole.y - height - 8;
+                    if (above >= 8)
+                        return above;
+                    return Math.min(win.height - height - 8, win.hole.y + 8);
+                }
+                implicitWidth: sizeLabel.implicitWidth + 16
+                implicitHeight: sizeLabel.implicitHeight + 8
+                radius: Theme.r.sm
+                color: Theme.withAlpha(Theme.colors.background, 0.92)
+                border.width: 1
+                border.color: Theme.colors.border
 
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: win.currentAction.name
-                        color: Colors.foreground
-                        font.family: Colors.fontFamily
-                        font.pixelSize: 28
-                        font.weight: Font.DemiBold
-                    }
+                Text {
+                    id: sizeLabel
+                    anchors.centerIn: parent
+                    text: win.sizeText
+                    color: Theme.colors.text
+                    font.family: Theme.font.mono
+                    font.pixelSize: Theme.type.monoSmall
+                }
+            }
+
+            Row {
+                id: tools
+                z: 6
+                visible: win.selectedHere && !win.dragging && win.hole !== null
+                spacing: 8
+                x: {
+                    if (!win.hole)
+                        return 12;
+                    let px = win.hole.x + win.hole.w - width;
+                    if (px < 12)
+                        px = 12;
+                    if (px + width > win.width - 12)
+                        px = Math.max(12, win.width - 12 - width);
+                    return px;
+                }
+                y: {
+                    if (!win.hole)
+                        return 12;
+                    let py = win.hole.y + win.hole.h + 10;
+                    if (py + height > win.height - 12)
+                        py = win.hole.y - height - 10;
+                    if (py < 12)
+                        py = 12;
+                    return py;
                 }
 
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 18
+                Repeater {
+                    model: win.actions
 
-                    Repeater {
-                        model: win.actions
+                    Rectangle {
+                        required property var modelData
+                        required property int index
+                        implicitWidth: buttonRow.implicitWidth + 22
+                        implicitHeight: 36
+                        radius: Theme.r.pill
+                        color: modelData.primary ? Theme.colors.accent : Theme.withAlpha(Theme.colors.background, 0.94)
+                        border.width: 1
+                        border.color: modelData.primary ? Theme.colors.accent : Theme.colors.border
 
-                        Item {
-                            required property var modelData
-                            required property int index
-                            width: 76
-                            height: 76
+                        Row {
+                            id: buttonRow
+                            anchors.centerIn: parent
+                            spacing: 8
 
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: win.current === index ? 72 : 62
-                                height: width
-                                radius: width / 2
-                                color: Qt.alpha(modelData.tint, win.current === index ? 0.42 : 0.16)
-                                border.width: win.current === index ? 2 : 0
-                                border.color: modelData.tint
-
-                                Behavior on width {
-                                    NumberAnimation {
-                                        duration: 120
-                                        easing.type: Easing.OutCubic
-                                    }
-                                }
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: modelData.icon
-                                    color: modelData.tint
-                                    font.family: Colors.fontFamily
-                                    font.pixelSize: win.current === index ? 26 : 20
-                                }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData.icon
+                                color: modelData.primary ? Theme.colors.onAccent : Theme.colors.text
+                                font.family: Theme.font.icon
+                                font.pixelSize: Theme.type.icon
                             }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: win.current = index
-                                onClicked: win.run(modelData.id)
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData.label
+                                color: modelData.primary ? Theme.colors.onAccent : Theme.colors.text
+                                font.family: Theme.font.ui
+                                font.pixelSize: Theme.type.body
                             }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: win.act(modelData.id)
                         }
                     }
                 }
+            }
+
+            Text {
+                z: 5
+                visible: win.shot === null
+                anchors.centerIn: parent
+                text: "This screen was not captured"
+                color: Theme.colors.text
+                font.family: Theme.font.ui
+                font.pixelSize: Theme.type.body
             }
         }
     }

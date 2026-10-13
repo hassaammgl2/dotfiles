@@ -84,8 +84,8 @@ CTRL + SUPER + Minus    Previous track
 SUPER + ALT + M         Now playing overlay (Quickshell)
 
 󰹑  Screenshot & Recording
-Print                   Screenshot UI (Quickshell)
-SUPER + SHIFT + S       Screenshot UI (Quickshell)
+Print                   Screenshot (drag, click window, or double-click)
+SUPER + SHIFT + S       Screenshot (drag, click window, or double-click)
 SUPER + SHIFT + ALT + S Screenshot region (clipboard)
 SUPER + ALT + R         Record screen with audio
 CTRL + ALT + R          Record screen
