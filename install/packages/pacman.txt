@@ -1,8 +1,6 @@
 # Terminals & shells
 kitty
 wezterm
-alacritty
-foot
 tmux
 fish
 starship
@@ -23,11 +21,9 @@ ripgrep
 fd
 jq
 less
-direnv
 lazygit
 lazydocker
 chafa
-imagemagick
 tldr
 tree
 man-db
@@ -36,11 +32,14 @@ cmatrix
 wget
 reflector
 pacman-contrib
+ueberzugpp
+stow
 
 # Hyprland & Wayland
 hyprland
 hyprlock
 hyprpicker
+hyprpaper
 quickshell
 uwsm
 awww
@@ -58,13 +57,11 @@ kvantum
 kvantum-qt5
 grim
 slurp
-swappy
 brightnessctl
 wf-recorder
 ffmpeg
 cliphist
 ydotool
-wev
 gnome-keyring
 gammastep
 geoclue
@@ -72,28 +69,30 @@ trash-cli
 libnotify
 wl-clipboard
 upower
-playerctl
+dunst
+wofi
 
 # Theming
-papirus-icon-theme
 adwaita-icon-theme
 gsettings-desktop-schemas
 dconf
 
-# File managers & GUI (nautilus + dolphin only)
+# File managers & GUI
 nautilus
 dolphin
 loupe
-yad
 zenity
-pavucontrol
 webapp-manager
 gnome-calculator
 gnome-text-editor
+gnome-calendar
 obsidian
 gnome-software
 kdeconnect
 qbittorrent
+libreoffice-fresh
+planify
+zeal
 
 # Network / Bluetooth
 networkmanager
@@ -101,6 +100,7 @@ network-manager-applet
 bluez
 bluez-utils
 wpa_supplicant
+gvfs-mtp
 
 # Audio (PipeWire only — no jack2 / pulseaudio)
 pipewire
@@ -120,10 +120,17 @@ mpv
 mpv-mpris
 imv
 cava
-feh
 gimp
 kdenlive
 obs-studio
+blender
+gifsicle
+
+# Games
+cataclysm-dda
+cataclysm-dda-tiles
+openttd
+ttyper
 
 # Dev / compilers (treesitter needs gcc + clang + tree-sitter-cli)
 python
@@ -137,8 +144,8 @@ llvm
 compiler-rt
 gcc
 tree-sitter
-tree-sitter-cli
 nodejs
+corepack
 jdk-openjdk
 jdk21-openjdk
 lua-language-server
@@ -152,6 +159,29 @@ nlohmann-json
 raylib
 tk
 android-tools
+boost
+catch2
+doxygen
+go
+gopls
+nasm
+yasm
+patchelf
+prettier
+pyside6
+python-black
+ruff
+rust
+sassc
+scdoc
+stylua
+swig
+tree-sitter-bash
+tree-sitter-javascript
+tree-sitter-python
+tree-sitter-rust
+typescript-language-server
+electron42
 
 # Fonts
 ttf-victor-mono-nerd
@@ -165,7 +195,6 @@ noto-fonts-cjk
 # Containers / VM / extras
 docker
 docker-compose
-docker-buildx
 flatpak
 cups
 cups-pk-helper
@@ -175,6 +204,11 @@ qemu-full
 ollama
 ly
 zram-generator
+libisoburn
+mtools
+smartmontools
+testdisk
+usbutils
 
 # GPU / firmware
 intel-media-driver

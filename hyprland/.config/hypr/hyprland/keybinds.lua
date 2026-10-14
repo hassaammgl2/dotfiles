@@ -114,7 +114,7 @@ hl.bind(kbCommunication, hl.dsp.workspace.toggle_special("communication"))
 hl.bind(kbTodo, hl.dsp.workspace.toggle_special("todo"))
 
 hl.bind(kbTerminal, hl.dsp.exec_cmd(terminal))
-hl.bind("CTRL + SHIFT + T", hl.dsp.exec_cmd("kitty --title tmux -e ~/.config/hypr/scripts/tmux-session.sh"))
+hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd("kitty --title tmux -e ~/.config/hypr/scripts/tmux-session.sh"))
 hl.bind(kbBrowser, hl.dsp.exec_cmd(browser))
 hl.bind(kbHBrowser, hl.dsp.exec_cmd(browser_helium))
 hl.bind(kbEditor, hl.dsp.exec_cmd(editor))
@@ -134,6 +134,7 @@ hl.bind("SUPER + SHIFT + ALT + R", hl.dsp.exec_cmd('wf-recorder -g "$(slurp)" -f
 hl.bind("SUPER + SHIFT + C", hl.dsp.exec_cmd("hyprpicker -a"))
 hl.bind("ALT + W", hl.dsp.exec_cmd("qs ipc call wallpaper toggle"))
 hl.bind("ALT + SHIFT + W", hl.dsp.exec_cmd("~/.config/hypr/scripts/wallpaper.sh next"))
+hl.bind("CTRL + ALT + W", hl.dsp.exec_cmd("qs ipc call wallpaper autoToggle"))
 hl.bind("SUPER + ALT + M", hl.dsp.exec_cmd("qs ipc call media toggle"))
 
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("qs ipc call osd micMute"), { locked = true })

@@ -99,6 +99,10 @@ Scope {
         function hide(): void {
             OverlayState.wallpaper = false;
         }
+
+        function autoToggle(): void {
+            WallpaperState.toggle();
+        }
     }
 
     IpcHandler {

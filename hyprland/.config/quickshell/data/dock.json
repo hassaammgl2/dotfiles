@@ -1,6 +1,7 @@
 {
     "apps": [
         "kitty",
+        "google-chrome",
         "brave-browser",
         "helium",
         "org.gnome.Nautilus",

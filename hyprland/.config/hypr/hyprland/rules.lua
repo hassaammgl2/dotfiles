@@ -5,6 +5,12 @@ hl.window_rule({
 })
 
 hl.window_rule({
+    name = "kitty-opaque",
+    match = { class = "kitty" },
+    opacity = 1,
+})
+
+hl.window_rule({
     name = "opaque-native",
     match = { class = "equibop|org\\.quickshell|imv|swappy" },
     opaque = true,

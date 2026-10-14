@@ -2,7 +2,7 @@
 SUPER + Space           Launcher (Quickshell)
 SUPER + K               Notification history (left sidebar)
 SUPER + Return          Terminal (kitty)
-CTRL + SHIFT + T         Terminal + tmux sessions (kitty)
+SUPER + SHIFT + T        Terminal + tmux sessions (kitty)
 SUPER + B               Browser (brave)
 SUPER + C               Editor (code)
 SUPER + E               File explorer (nautilus)
@@ -100,7 +100,8 @@ SUPER + Period          Emoji picker (Quickshell)
 
 󰟸  Wallpaper
 ALT + W                 Wallpaper picker (Quickshell)
-SHIFT + ALT + W         Next random wallpaper
+SHIFT + ALT + W         Random wallpaper
+CTRL + ALT + W          Auto wallpaper on/off (picks a random one)
 
 󰟸  Bar (Quickshell)
 ALT + T                 Toggle bar

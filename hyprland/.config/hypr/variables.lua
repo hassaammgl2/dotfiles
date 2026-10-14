@@ -1,4 +1,4 @@
-terminal = "kitty"
+terminal = "~/.config/hypr/scripts/terminal.sh"
 browser = "brave"
 browser_helium = "helium-browser"
 editor = "code"

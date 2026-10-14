@@ -67,15 +67,13 @@ Scope {
             focusable: true
             aboveWindows: true
 
-            readonly property int cardW: Math.min(820, Math.floor(width * 0.5))
-            readonly property int cardH: Math.min(500, Math.floor(height * 0.56))
+            readonly property int cardW: Math.min(760, Math.floor(width * 0.48))
+            readonly property int cardH: Math.min(420, Math.floor(height * 0.5))
             readonly property string currentPath: {
                 if (carousel.currentIndex >= 0 && carousel.currentIndex < root.files.length)
                     return root.files[carousel.currentIndex];
                 return "";
             }
-            readonly property bool currentGif: currentPath.toLowerCase().endsWith(".gif")
-
             anchors {
                 left: true
                 right: true
@@ -84,6 +82,7 @@ Scope {
             }
 
             onVisibleChanged: {
+                WallpaperState.pickerOpen = visible;
                 if (visible) {
                     root.scan();
                     keySink.forceActiveFocus();
@@ -124,7 +123,7 @@ Scope {
 
             Rectangle {
                 anchors.fill: parent
-                color: Qt.alpha(Colors.background, 0.42)
+                color: Qt.rgba(0.03, 0.025, 0.02, 0.86)
 
                 MouseArea {
                     anchors.fill: parent
@@ -136,6 +135,7 @@ Scope {
                 id: keySink
                 anchors.fill: parent
                 focus: win.visible
+                z: 2
 
                 Keys.onEscapePressed: OverlayState.close()
                 Keys.onReturnPressed: win.applyCurrent()
@@ -144,6 +144,12 @@ Scope {
                 Keys.onRightPressed: carousel.incrementCurrentIndex()
                 Keys.onUpPressed: carousel.decrementCurrentIndex()
                 Keys.onDownPressed: carousel.incrementCurrentIndex()
+                Keys.onPressed: event => {
+                    if (event.text === "a" || event.text === "A") {
+                        WallpaperState.toggle();
+                        event.accepted = true;
+                    }
+                }
 
                 WheelHandler {
                     onWheel: event => {
@@ -158,81 +164,39 @@ Scope {
 
             PathView {
                 id: carousel
+                z: 3
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: -36
-                height: win.cardH + 48
+                anchors.verticalCenterOffset: -28
+                height: win.cardH + 36
                 model: root.files
                 pathItemCount: Math.min(7, count)
                 preferredHighlightBegin: 0.5
                 preferredHighlightEnd: 0.5
                 highlightRangeMode: PathView.StrictlyEnforceRange
-                highlightMoveDuration: 280
+                highlightMoveDuration: Theme.motion.slow
                 flickDeceleration: 1200
-                clip: false
 
                 path: Path {
                     startX: 0
                     startY: carousel.height / 2
-                    PathAttribute {
-                        name: "zOrder"
-                        value: 0
-                    }
-                    PathAttribute {
-                        name: "itemScale"
-                        value: 0.62
-                    }
-                    PathAttribute {
-                        name: "itemOpacity"
-                        value: 0.38
-                    }
-                    PathAttribute {
-                        name: "rot"
-                        value: 58
-                    }
+                    PathAttribute { name: "zOrder"; value: 0 }
+                    PathAttribute { name: "itemScale"; value: 0.58 }
+                    PathAttribute { name: "itemOpacity"; value: 0.45 }
+                    PathAttribute { name: "rot"; value: 46 }
 
-                    PathLine {
-                        x: carousel.width * 0.5
-                        y: carousel.height / 2
-                    }
-                    PathAttribute {
-                        name: "zOrder"
-                        value: 200
-                    }
-                    PathAttribute {
-                        name: "itemScale"
-                        value: 1
-                    }
-                    PathAttribute {
-                        name: "itemOpacity"
-                        value: 1
-                    }
-                    PathAttribute {
-                        name: "rot"
-                        value: 0
-                    }
+                    PathLine { x: carousel.width * 0.5; y: carousel.height / 2 }
+                    PathAttribute { name: "zOrder"; value: 200 }
+                    PathAttribute { name: "itemScale"; value: 1 }
+                    PathAttribute { name: "itemOpacity"; value: 1 }
+                    PathAttribute { name: "rot"; value: 0 }
 
-                    PathLine {
-                        x: carousel.width
-                        y: carousel.height / 2
-                    }
-                    PathAttribute {
-                        name: "zOrder"
-                        value: 0
-                    }
-                    PathAttribute {
-                        name: "itemScale"
-                        value: 0.62
-                    }
-                    PathAttribute {
-                        name: "itemOpacity"
-                        value: 0.38
-                    }
-                    PathAttribute {
-                        name: "rot"
-                        value: -58
-                    }
+                    PathLine { x: carousel.width; y: carousel.height / 2 }
+                    PathAttribute { name: "zOrder"; value: 0 }
+                    PathAttribute { name: "itemScale"; value: 0.58 }
+                    PathAttribute { name: "itemOpacity"; value: 0.45 }
+                    PathAttribute { name: "rot"; value: -46 }
                 }
 
                 delegate: Item {
@@ -241,85 +205,78 @@ Scope {
                     required property int index
                     width: win.cardW
                     height: win.cardH
-                    z: PathView.zOrder
-                    scale: PathView.itemScale
-                    opacity: PathView.itemOpacity
+                    z: PathView.onPath ? PathView.zOrder : 0
+                    scale: PathView.onPath ? PathView.itemScale : 1
+                    opacity: PathView.onPath ? PathView.itemOpacity : 0
                     visible: PathView.onPath
 
                     readonly property bool selected: PathView.isCurrentItem
-                    readonly property real tilt: PathView.rot
+                    readonly property real tilt: PathView.onPath ? PathView.rot : 0
                     readonly property bool gif: `${modelData}`.toLowerCase().endsWith(".gif")
 
                     transform: Rotation {
                         origin.x: card.tilt > 0 ? card.width : (card.tilt < 0 ? 0 : card.width / 2)
                         origin.y: card.height / 2
-                        axis {
-                            x: 0
-                            y: 1
-                            z: 0
-                        }
+                        axis { x: 0; y: 1; z: 0 }
                         angle: card.tilt
                     }
 
                     Rectangle {
                         visible: card.selected
                         anchors.fill: parent
-                        anchors.margins: -10
-                        radius: 18
-                        color: Qt.alpha(Colors.accent, 0.22)
+                        anchors.margins: -14
+                        radius: Theme.r.xl
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Qt.alpha(Colors.accent, 0.55)
                     }
 
                     Rectangle {
                         anchors.fill: parent
-                        radius: 14
+                        radius: Theme.r.lg
                         color: Theme.colors.background
-                        border.width: card.selected ? 2 : 1
-                        border.color: card.selected ? Colors.accent : Qt.alpha(Colors.foreground, 0.18)
                         clip: true
 
                         Image {
                             anchors.fill: parent
+                            visible: !(card.gif && card.selected)
                             source: root.fileUrl(modelData)
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             cache: true
-                            sourceSize.width: 480
-                            sourceSize.height: 270
+                            sourceSize.width: 720
+                            sourceSize.height: 405
                         }
 
                         AnimatedImage {
-                            visible: card.selected && card.gif
                             anchors.fill: parent
+                            visible: card.gif && card.selected
                             source: card.selected && card.gif ? root.fileUrl(modelData) : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             playing: card.selected && OverlayState.wallpaper
                         }
+                    }
 
-                        Rectangle {
-                            anchors.fill: parent
-                            visible: !card.selected
-                            color: Qt.alpha(Colors.background, 0.38)
-                        }
+                    Rectangle {
+                        visible: card.gif
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 14
+                        width: 36
+                        height: 18
+                        radius: Theme.r.xs
+                        color: Qt.alpha(Colors.background, 0.72)
+                        border.width: 1
+                        border.color: Qt.alpha(Colors.accent, 0.7)
 
-                        Rectangle {
-                            visible: card.gif && !card.selected
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.margins: 12
-                            width: 34
-                            height: 16
-                            radius: 3
-                            color: Colors.accent
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "GIF"
-                                color: Colors.background
-                                font.family: Colors.fontFamily
-                                font.pixelSize: 9
-                                font.bold: true
-                            }
+                        Text {
+                            anchors.centerIn: parent
+                            text: "GIF"
+                            color: Colors.foreground
+                            font.family: Theme.font.ui
+                            font.pixelSize: Theme.type.caption
+                            font.bold: true
                         }
                     }
 
@@ -337,33 +294,91 @@ Scope {
             }
 
             Text {
+                z: 4
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: carousel.bottom
-                anchors.topMargin: 8
+                anchors.topMargin: 4
                 text: root.files.length ? root.prettyName(win.currentPath) : "no wallpapers"
                 color: Colors.foreground
-                font.family: Colors.fontFamily
-                font.pixelSize: 28
+                font.family: Theme.font.ui
+                font.pixelSize: Theme.type.headline
                 font.weight: Font.DemiBold
             }
 
-            Text {
+            Row {
+                z: 5
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 28
-                visible: root.files.length > 0
-                text: `${carousel.currentIndex + 1}  /  ${root.files.length}   ·   enter set   ·   esc`
-                color: Colors.color8
-                font.family: Colors.fontFamily
-                font.pixelSize: 12
+                anchors.bottomMargin: 26
+                spacing: Theme.space.md
+
+                Rectangle {
+                    width: autoLabel.implicitWidth + 28
+                    height: 32
+                    radius: Theme.r.pill
+                    color: WallpaperState.rotating ? Colors.accent : Qt.alpha(Colors.foreground, 0.08)
+                    border.width: 1
+                    border.color: WallpaperState.rotating ? Colors.accent : Qt.alpha(Colors.foreground, 0.16)
+
+                    Text {
+                        id: autoLabel
+                        anchors.centerIn: parent
+                        text: WallpaperState.rotating ? "Auto on" : "Auto off"
+                        color: WallpaperState.rotating ? Colors.background : Colors.foreground
+                        font.family: Theme.font.ui
+                        font.pixelSize: Theme.type.label
+                        font.weight: Font.Medium
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: WallpaperState.toggle()
+                    }
+                }
+
+                Rectangle {
+                    width: everyLabel.implicitWidth + 28
+                    height: 32
+                    radius: Theme.r.pill
+                    color: Qt.alpha(Colors.foreground, 0.08)
+                    border.width: 1
+                    border.color: Qt.alpha(Colors.foreground, 0.16)
+                    opacity: WallpaperState.rotating ? 1 : 0.55
+
+                    Text {
+                        id: everyLabel
+                        anchors.centerIn: parent
+                        text: `every ${WallpaperState.minutes} min`
+                        color: Colors.foreground
+                        font.family: Theme.font.ui
+                        font.pixelSize: Theme.type.label
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: WallpaperState.cycleMinutes()
+                    }
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.files.length > 0
+                    text: `${carousel.currentIndex + 1} / ${root.files.length}   ·   enter set   ·   a auto   ·   esc`
+                    color: Colors.color8
+                    font.family: Theme.font.ui
+                    font.pixelSize: Theme.type.caption
+                }
             }
 
             Text {
+                z: 4
                 anchors.verticalCenter: carousel.verticalCenter
                 anchors.left: parent.left
                 anchors.leftMargin: 28
                 text: "‹"
-                color: Qt.alpha(Colors.foreground, 0.55)
+                color: Qt.alpha(Colors.foreground, 0.7)
                 font.pixelSize: 42
                 visible: root.files.length > 1
 
@@ -376,11 +391,12 @@ Scope {
             }
 
             Text {
+                z: 4
                 anchors.verticalCenter: carousel.verticalCenter
                 anchors.right: parent.right
                 anchors.rightMargin: 28
                 text: "›"
-                color: Qt.alpha(Colors.foreground, 0.55)
+                color: Qt.alpha(Colors.foreground, 0.7)
                 font.pixelSize: 42
                 visible: root.files.length > 1
 
